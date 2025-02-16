@@ -1,0 +1,32 @@
+# Cleanup related code taken from https://stackoverflow.com/a/13102849
+name: cleanup old commits
+
+#on:
+#  schedule:
+#    - cron: "0 0 1 * *"
+on: workflow_dispatch
+
+env:
+  ACTIONS_ALLOW_UNSECURE_COMMANDS: true
+
+jobs:
+  update:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout repo
+        uses: actions/checkout@v2
+      - name: Create env var for date
+        run: |
+          echo "DATE=$(python -c 'from datetime import datetime; print(datetime.now())')" >> $GITHUB_ENV
+      - name: Apply cleanup
+        run: |
+          git checkout --orphan newBranch
+          git add -A  
+          git config user.name yabisiktir
+          git config user.email yabisiktir@users.noreply.github.com
+          git commit -m "Cleanup action on ${{env.DATE}}"
+          git branch -D master 
+          git branch -m master 
+          git push -f origin master 
+          git gc --aggressive --prune=all
