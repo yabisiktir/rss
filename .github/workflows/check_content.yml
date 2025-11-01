@@ -1,0 +1,52 @@
+name: rss
+
+on:
+  schedule:
+    - cron: "0 * * * *"
+
+env:
+  ACTIONS_ALLOW_UNSECURE_COMMANDS: true
+
+jobs:
+  update:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout repo
+        uses: actions/checkout@v2
+        with:
+            ref: ${{ github.head_ref }}
+            path: ./rss
+      - name: Checkout private repo
+        uses: actions/checkout@master
+        with:
+            repository: yabisiktir/rss_private
+            token: ${{ secrets.ACCESS_TOKEN }}
+            path: ./rss_private
+
+      - uses: browser-actions/setup-chrome@latest
+      - run: chrome --version
+
+      - name: Install xvfb
+        run: sudo apt-get install xvfb
+    
+      - name: Set up Python 3.9
+        uses: actions/setup-python@v2
+        with:
+          python-version: '3.9'
+      - name: Install requirements
+        run: pip install -r ./rss_private/src/requirements.txt
+      - name: Grant execute permission
+        run: chmod +x ./rss_private/runme.sh
+      - name: Run rss_private
+        run: cd rss_private && ./runme.sh  ${{secrets.IMGAPI}}
+      - name: Copy to output
+        run: mv ./rss_private/src/*.xml ./rss/rss
+      - name: create env var for date
+        run: |
+         echo "DATE=$(python -c 'from datetime import datetime; print(datetime.now())')" >> $GITHUB_ENV
+      - uses: stefanzweifel/git-auto-commit-action@v4
+        with:
+          commit_message: New run at ${{env.DATE}}
+          repository: ./rss
+          file_pattern: ./rss/*.xml
